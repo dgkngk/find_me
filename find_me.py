@@ -1,11 +1,13 @@
+import re
 import threading
 import requests
 import folium
-from flask import Flask, Response
 import webview
 
+from flask import Flask, Response, request
+
 app = Flask(__name__)
-plate = "06 ESA 493"
+plate = ""
 latest_map_html = ""  # In-memory map HTML
 map_mode = "light"  # default mode
 
@@ -23,6 +25,10 @@ def fetch_bus_data(plate_number: str):
     except Exception as e:
         print("Error fetching data:", e)
         return None
+    
+def is_valid_plate(plate_str):
+    pattern = r"^\d{2}\s?[A-Z]{1,3}\s?\d{2,4}$"
+    return re.match(pattern, plate_str.replace(" ", "").upper()) is not None
 
 def extract_key_values(data):
     lat = data.get("Latitude", "")
@@ -32,16 +38,25 @@ def extract_key_values(data):
     voy = data.get("SeferAdi", "")
     dt  = data.get("DeviceDate", "")
     dkm = data.get("DailyKm", "")
-    return lat, lng, loc, spd, voy, dt, dkm
+    lpt = data.get("DeviceLicensePlate", "")
+    return lat, lng, loc, spd, voy, dt, dkm, lpt
 
 def generate_map_html():
-    global latest_map_html, map_mode
+    global latest_map_html, map_mode, plate
+    if not plate or plate.strip() == "":
+        latest_map_html = "<h3>Please enter a plate number.</h3>"
+        return
+    
+    if not is_valid_plate(plate):
+        latest_map_html = "<h3>Invalid plate number. Please enter a valid plate number.</h3>"
+        return
+    
     data = fetch_bus_data(plate)
     if not data:
         latest_map_html = "<h3>Error fetching bus data.</h3>"
         return
 
-    lat, lng, loc, spd, voy, dt, dkm = extract_key_values(data)
+    lat, lng, loc, spd, voy, dt, dkm, lpt = extract_key_values(data)
     try:
         lat = float(lat)
         lng = float(lng)
@@ -54,6 +69,7 @@ def generate_map_html():
     m = folium.Map(location=[lat, lng], zoom_start=13, tiles=tile_style)
 
     popup_text = f"""
+    <b>Plate Number:<b/> {lpt}<br>
     <b>Location:</b> {loc}<br>
     <b>Route:</b> {voy}<br>
     <b>Speed:</b> {spd} km/h<br>
@@ -73,6 +89,14 @@ def generate_map_html():
 
 @app.route('/')
 def index():
+    global plate
+    saved_plate = request.cookies.get("bus_plate")
+
+    if saved_plate and is_valid_plate(saved_plate):
+        plate = saved_plate.upper()
+    else:
+        saved_plate = plate  # use default if none
+    
     return """
     <html>
     <head>
@@ -94,6 +118,10 @@ def index():
                 margin-right: 10px;
                 padding: 6px 10px;
             }
+            #header input {
+                margin-right: 5px;
+                padding: 6px 6px;
+            }
             #mapFrame {
                 width: 100%;
                 height: calc(100% - 50px);
@@ -105,6 +133,9 @@ def index():
         <div id="header">
             <button onclick="refreshMap()">🔄 Refresh</button>
             <button onclick="toggleMode()">🌓 Toggle Light/Dark Mode</button>
+            <br>
+            <input type="text" id="plateInput" placeholder="Enter Plate (e.g., 34 IST 34)" />
+            <button onclick="setPlate()">✅ Set Plate</button>
         </div>
         <iframe id="mapFrame" src="/map"></iframe>
         <script>
@@ -118,12 +149,20 @@ def index():
                     document.getElementById('mapFrame').src = '/map?ts=' + new Date().getTime();
                 });
             }
+            function setPlate() {
+                const plate = document.getElementById("plateInput").value;
+                fetch('/set-plate', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+                    body: 'plate=' + encodeURIComponent(plate)
+                }).then(() => {
+                    document.getElementById('mapFrame').src = '/map?ts=' + new Date().getTime();
+                });
+            }
         </script>
     </body>
     </html>
     """
-
-
 
 @app.route('/map')
 def map_view():
@@ -141,6 +180,17 @@ def toggle_mode():
     generate_map_html()
     return "OK"
 
+@app.route('/set-plate', methods=['POST'])
+def set_plate():
+    global plate
+    plate = request.form.get("plate", "").strip().upper()
+    if plate.strip() == "":
+        print("Plate cannot be empty")
+        return
+    
+    print("Plate set to:", plate)
+    generate_map_html()
+    return "OK"
 
 def start_flask():
     generate_map_html()  # Initial map
