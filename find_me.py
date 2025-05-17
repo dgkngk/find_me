@@ -3,8 +3,11 @@ import threading
 import requests
 import folium
 import webview
+import pytz
 
 from flask import Flask, Response, request
+from datetime import datetime, timedelta
+
 
 app = Flask(__name__)
 plate = ""
@@ -57,6 +60,9 @@ def generate_map_html():
         return
 
     lat, lng, loc, spd, voy, dt, dkm, lpt = extract_key_values(data)
+    
+    bus_time = datetime.strptime(dt, "%Y-%m-%dT%H:%M:%S") + timedelta(hours=3)
+    current_time = datetime.now(tz=pytz.timezone("Europe/Istanbul"))
     try:
         lat = float(lat)
         lng = float(lng)
@@ -73,7 +79,8 @@ def generate_map_html():
     <b>Location:</b> {loc}<br>
     <b>Route:</b> {voy}<br>
     <b>Speed:</b> {spd} km/h<br>
-    <b>Time:</b> {dt}<br>
+    <b>Bus Time:</b> {bus_time.strftime("%Y-%m-%d %H:%M:%S")}<br>
+    <b>Refresh Time</b> {current_time.strftime("%Y-%m-%d %H:%M:%S")}<br>
     <b>Daily Km:</b> {dkm}
     """
 
@@ -136,8 +143,10 @@ def index():
             <br>
             <input type="text" id="plateInput" placeholder="Enter Plate (e.g., 34 IST 34)" />
             <button onclick="setPlate()">✅ Set Plate</button>
+            <br>
+            <input type="checkbox" id="autoRefresh" onchange="toggleAutoRefresh()"> 🔁 Auto Refresh (30s)
         </div>
-        <iframe id="mapFrame" src="/map"></iframe>
+        <div><iframe id="mapFrame" src="/map"></iframe></div>
         <script>
             function refreshMap() {
                 fetch('/refresh').then(() => {
@@ -155,9 +164,30 @@ def index():
                     method: 'POST',
                     headers: {'Content-Type': 'application/x-www-form-urlencoded'},
                     body: 'plate=' + encodeURIComponent(plate)
-                }).then(() => {
-                    document.getElementById('mapFrame').src = '/map?ts=' + new Date().getTime();
-                });
+                }).then((response) => {
+                    if (response.ok) {
+                        document.cookie = "bus_plate=" + encodeURIComponent(plate) + "; path=/";
+                        document.getElementById('mapFrame').src = '/map?ts=' + new Date().getTime();
+                    }
+                    else {
+                        alert("Invalid plate. Please try again.")
+                    }
+                })
+                ;
+            }
+            let autoRefreshTimer = null;
+
+            function toggleAutoRefresh() {
+                const isChecked = document.getElementById("autoRefresh").checked;
+
+                if (isChecked) {
+                    autoRefreshTimer = setInterval(() => {
+                        document.getElementById('mapFrame').src = '/map?ts=' + new Date().getTime();
+                    }, 30000); // 30 seconds
+                } else {
+                    clearInterval(autoRefreshTimer);
+                    autoRefreshTimer = null;
+                }
             }
         </script>
     </body>
