@@ -64,7 +64,7 @@ def generate_map_html():
         latest_map_html = "<h3>Invalid coordinates.</h3>"
         return
 
-    tile_style = "CartoDB positron" if map_mode == "light" else "CartoDB dark_matter"
+    tile_style = "OpenStreetMap" if map_mode == "light" else "CartoDB dark_matter"
 
     m = folium.Map(location=[lat, lng], zoom_start=13, tiles=tile_style)
 
