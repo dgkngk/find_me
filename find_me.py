@@ -11,6 +11,8 @@ from xyzservices import TileProvider
 
 
 app = Flask(__name__)
+port = int(os.environ.get("PORT", 5000))
+app.run(host="0.0.0.0", port=port)
 plate = ""
 latest_map_html = ""  # In-memory map HTML
 map_mode = "light"  # default mode
