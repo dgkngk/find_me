@@ -7,6 +7,7 @@ import pytz
 
 from flask import Flask, Response, jsonify, request
 from datetime import datetime, timedelta
+from xyzservices import TileProvider
 
 
 app = Flask(__name__)
@@ -70,9 +71,25 @@ def generate_map_html():
         latest_map_html = "<h3>Invalid coordinates.</h3>"
         return
 
-    tile_style = "OpenStreetMap" if map_mode == "light" else "CartoDB dark_matter"
+    m = folium.Map(location=[lat, lng], zoom_start=13, width=870, height=550)
 
-    m = folium.Map(location=[lat, lng], zoom_start=13, tiles=tile_style)
+    if map_mode == "light":
+        folium.TileLayer(
+            TileProvider(
+                url="https://tile.jawg.io/jawg-streets/{z}/{x}/{y}{r}.png?access-token=63BA10a3rgKUqfuP6MQcwnMFU82YntFQ22T8VFlVfkugiNB6q5OwnTFpC6bLMQJX",
+                name="Jawg Streets",
+                attribution="© JAWG, © dgkngk"
+            )
+        ).add_to(m)
+    else:
+        folium.TileLayer(
+            TileProvider(
+                url="https://tile.jawg.io/jawg-matrix/{z}/{x}/{y}{r}.png?access-token=63BA10a3rgKUqfuP6MQcwnMFU82YntFQ22T8VFlVfkugiNB6q5OwnTFpC6bLMQJX",
+                name="Jawg Dark",
+                attribution="© JAWG, © dgkngk"
+            )
+        ).add_to(m)
+
 
     popup_text = f"""
     <b>Plate Number:<b/> {lpt}<br>
