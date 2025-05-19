@@ -5,7 +5,7 @@ import folium
 import webview
 import pytz
 
-from flask import Flask, Response, request
+from flask import Flask, Response, jsonify, request
 from datetime import datetime, timedelta
 
 
@@ -143,6 +143,9 @@ def index():
             <br>
             <input type="text" id="plateInput" placeholder="Enter Plate (e.g., 34 IST 34)" />
             <button onclick="setPlate()">✅ Set Plate</button>
+            <select id="busSelect" onchange="onBusSelect()">
+                <option value="">🔽 Select Bus</option>
+            </select>
             <br>
             <input type="checkbox" id="autoRefresh" onchange="toggleAutoRefresh()"> 🔁 Auto Refresh (30s)
         </div>
@@ -189,6 +192,26 @@ def index():
                     autoRefreshTimer = null;
                 }
             }
+            window.onload = function () {
+                fetch('/bus-list')
+                    .then(res => res.json())
+                    .then(buses => {
+                        const select = document.getElementById("busSelect");
+                        buses.forEach(bus => {
+                            const opt = document.createElement("option");
+                            opt.value = bus.value;
+                            opt.textContent = bus.label;
+                            select.appendChild(opt);
+                        });
+                    });
+            };
+            function onBusSelect() {
+                const selected = document.getElementById("busSelect").value;
+                if (selected) {
+                    document.getElementById("plateInput").value = selected;
+                    setPlate(); // Automatically fetch and show
+                }
+            }
         </script>
     </body>
     </html>
@@ -196,7 +219,24 @@ def index():
 
 @app.route('/map')
 def map_view():
+    generate_map_html()
     return Response(latest_map_html, mimetype='text/html')
+
+@app.route('/bus-list')
+def bus_list():
+    url = "https://www.pamukkale.com.tr/ajax.php?islem=yolcum-nerede-sefer&Kalkis=4829&Varis=3500"
+    try:
+        resp = requests.get(url)
+        html = resp.text
+
+        # Match: <option value='34 XYZ 123'>18:00 - 34 XYZ 123</option>
+        pattern = r"<option value='(.*?)'>(.*?)</option>"
+        matches = re.findall(pattern, html)
+
+        buses = [{"value": plate, "label": label} for plate, label in matches]
+        return jsonify(buses)
+    except Exception as e:
+        return jsonify([]), 500
 
 @app.route('/refresh')
 def refresh():
@@ -227,7 +267,7 @@ def start_flask():
     app.run(host="127.0.0.1", port=5000, threaded=True)
 
 def start_gui():
-    webview.create_window("Bus Location Tracker", "http://127.0.0.1:5000", width=900, height=700)
+    webview.create_window("Pamukkale Bus Location Tracker", "http://127.0.0.1:5000", width=900, height=700)
     webview.start()
 
 if __name__ == "__main__":
