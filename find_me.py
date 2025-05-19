@@ -134,6 +134,14 @@ def index():
                 height: calc(100% - 50px);
                 border: none;
             }
+            @keyframes spin {
+                from { transform: rotate(0deg); }
+                to { transform: rotate(360deg); }
+            }
+
+            .spin {
+                animation: spin 1s linear infinite; 
+            }
         </style>
     </head>
     <body>
@@ -146,6 +154,7 @@ def index():
             <select id="busSelect" onchange="onBusSelect()">
                 <option value="">🔽 Select Bus</option>
             </select>
+            <button onclick="loadBusList()" title="Refresh bus list" style="font-size: 16px; padding: 2px 6px;">🔁</button>
             <br>
             <input type="checkbox" id="autoRefresh" onchange="toggleAutoRefresh()"> 🔁 Auto Refresh (30s)
         </div>
@@ -185,6 +194,7 @@ def index():
 
                 if (isChecked) {
                     autoRefreshTimer = setInterval(() => {
+                        loadBusList();
                         document.getElementById('mapFrame').src = '/map?ts=' + new Date().getTime();
                     }, 30000); // 30 seconds
                 } else {
@@ -192,19 +202,33 @@ def index():
                     autoRefreshTimer = null;
                 }
             }
+            function loadBusList() {
+            const dropdown = document.getElementById("busSelect");
+
+            // Clear old options (except first)
+            dropdown.options.length = 1;
+
+            fetch("/bus-list")
+                .then(res => res.json())
+                .then(data => {
+                data.forEach(bus => {
+                    const option = document.createElement("option");
+                    option.value = bus.value;
+                    option.textContent = bus.label;
+                    dropdown.appendChild(option);
+                });
+                })
+                .catch(err => {
+                console.error("Failed to load bus list:", err);
+                alert("Could not refresh bus list.");
+                });
+            }
+
+            // Call on initial page load
             window.onload = function () {
-                fetch('/bus-list')
-                    .then(res => res.json())
-                    .then(buses => {
-                        const select = document.getElementById("busSelect");
-                        buses.forEach(bus => {
-                            const opt = document.createElement("option");
-                            opt.value = bus.value;
-                            opt.textContent = bus.label;
-                            select.appendChild(opt);
-                        });
-                    });
+            loadBusList();
             };
+            
             function onBusSelect() {
                 const selected = document.getElementById("busSelect").value;
                 if (selected) {
@@ -222,19 +246,27 @@ def map_view():
     generate_map_html()
     return Response(latest_map_html, mimetype='text/html')
 
+def fetch_buses(kalkis, varis, label_suffix):
+    url = f"https://www.pamukkale.com.tr/ajax.php?islem=yolcum-nerede-sefer&Kalkis={kalkis}&Varis={varis}"
+    resp = requests.get(url)
+    html = resp.text
+
+    pattern = r"<option value='(.*?)'>(.*?)</option>"
+    matches = re.findall(pattern, html)
+
+    # Append route info to label
+    return [
+        {"value": plate, "label": f"{label} ({label_suffix})"}
+        for plate, label in matches
+    ]
+
 @app.route('/bus-list')
 def bus_list():
-    url = "https://www.pamukkale.com.tr/ajax.php?islem=yolcum-nerede-sefer&Kalkis=4829&Varis=3500"
     try:
-        resp = requests.get(url)
-        html = resp.text
+        milas_to_izmir = fetch_buses(4829, 3500, "Milas → İzmir")
+        izmir_to_milas = fetch_buses(3500, 4829, "İzmir → Milas")
 
-        # Match: <option value='34 XYZ 123'>18:00 - 34 XYZ 123</option>
-        pattern = r"<option value='(.*?)'>(.*?)</option>"
-        matches = re.findall(pattern, html)
-
-        buses = [{"value": plate, "label": label} for plate, label in matches]
-        return jsonify(buses)
+        return jsonify(milas_to_izmir + izmir_to_milas)
     except Exception as e:
         return jsonify([]), 500
 
