@@ -1,4 +1,5 @@
 import re
+import os
 import threading
 import requests
 import folium
@@ -329,4 +330,5 @@ def start_gui():
 if __name__ == "__main__":
     flask_thread = threading.Thread(target=start_flask, daemon=True)
     flask_thread.start()
-    start_gui()
+    if os.getenv("ON_SERVER") != True:
+        start_gui()
