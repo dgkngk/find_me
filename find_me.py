@@ -3,8 +3,6 @@ import os
 import threading
 import requests
 import folium
-if os.getenv("ON_SERVER") != True:
-    import webview
 import pytz
 
 from flask import Flask, Response, jsonify, request
@@ -324,12 +322,8 @@ def start_flask():
     generate_map_html()  # Initial map
     app.run(host="127.0.0.1", port=5000, threaded=True)
 
-def start_gui():
-    webview.create_window("Pamukkale Bus Location Tracker", "http://127.0.0.1:5000", width=900, height=700)
-    webview.start()
 
 if __name__ == "__main__":
     flask_thread = threading.Thread(target=start_flask, daemon=True)
     flask_thread.start()
-    if os.getenv("ON_SERVER") != True:
-        start_gui()
+
