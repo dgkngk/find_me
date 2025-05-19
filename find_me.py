@@ -9,6 +9,14 @@ import pytz
 from flask import Flask, Response, jsonify, request
 from datetime import datetime, timedelta
 from xyzservices import TileProvider
+from bs4 import BeautifulSoup
+
+url = "https://www.pamukkale.com.tr/yolcum-nerede"
+resp = requests.get(url)
+soup = BeautifulSoup(resp.text, "html.parser")
+
+select = soup.find("select", {"id": "kalkis-durak-list-nerede"})
+options = select.find_all("option")
 
 
 app = Flask(__name__)
