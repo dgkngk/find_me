@@ -71,7 +71,7 @@ def generate_map_html():
         latest_map_html = "<h3>Invalid coordinates.</h3>"
         return
 
-    m = folium.Map(location=[lat, lng], zoom_start=13, width=870, height=550)
+    m = folium.Map(location=[lat, lng], zoom_start=13, width="100%", height="90%")
 
     if map_mode == "light":
         folium.TileLayer(
@@ -270,8 +270,8 @@ def map_view():
     generate_map_html()
     return Response(latest_map_html, mimetype='text/html')
 
-def fetch_buses(kalkis, varis, label_suffix):
-    url = f"https://www.pamukkale.com.tr/ajax.php?islem=yolcum-nerede-sefer&Kalkis={kalkis}&Varis={varis}"
+def fetch_buses(from_point, to_point, label_suffix):
+    url = f"https://www.pamukkale.com.tr/ajax.php?islem=yolcum-nerede-sefer&Kalkis={from_point}&Varis={to_point}"
     resp = requests.get(url)
     html = resp.text
 
