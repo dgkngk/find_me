@@ -154,7 +154,7 @@ def index():
             <select id="busSelect" onchange="onBusSelect()">
                 <option value="">🔽 Select Bus</option>
             </select>
-            <button onclick="loadBusList()" title="Refresh bus list" style="font-size: 16px; padding: 2px 6px;">🔁</button>
+            <button id="refreshBtn" onclick="loadBusList()" title="Refresh bus list" style="font-size: 10px; padding: 2px 4px; width: 25px; height: 25px;border-radius: 50%;">🔁</button>
             <br>
             <input type="checkbox" id="autoRefresh" onchange="toggleAutoRefresh()"> 🔁 Auto Refresh (30s)
         </div>
@@ -204,6 +204,10 @@ def index():
             }
             function loadBusList() {
             const dropdown = document.getElementById("busSelect");
+              const refreshBtn = document.getElementById("refreshBtn");
+
+            // Start spin
+            refreshBtn.classList.add("spin");
 
             // Clear old options (except first)
             dropdown.options.length = 1;
@@ -221,6 +225,9 @@ def index():
                 .catch(err => {
                 console.error("Failed to load bus list:", err);
                 alert("Could not refresh bus list.");
+                }).finally(() => {
+                // Stop spin
+                refreshBtn.classList.remove("spin");
                 });
             }
 
