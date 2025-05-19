@@ -1,8 +1,10 @@
 import re
+import os
 import threading
 import requests
 import folium
-import webview
+if os.getenv("ON_SERVER") != True:
+    import webview
 import pytz
 
 from flask import Flask, Response, jsonify, request
@@ -124,7 +126,7 @@ def index():
     return """
     <html>
     <head>
-        <title>Bus Live Map</title>
+        <title>Pamukkale Bus Location Tracker</title>
         <style>
             html, body {
                 margin: 0;
@@ -329,4 +331,5 @@ def start_gui():
 if __name__ == "__main__":
     flask_thread = threading.Thread(target=start_flask, daemon=True)
     flask_thread.start()
-    start_gui()
+    if os.getenv("ON_SERVER") != True:
+        start_gui()
