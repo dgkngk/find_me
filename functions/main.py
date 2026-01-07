@@ -54,64 +54,88 @@ def extract_key_values(data):
     return lat, lng, loc, spd, voy, dt, dkm, lpt
 
 def generate_map_html(current_plate, current_mode):
+    print(f"DEBUG: generate_map_html called. Plate: '{current_plate}', Mode: '{current_mode}'")
+
     if not current_plate or current_plate.strip() == "":
+        print("DEBUG: Plate is empty or None.")
         return "<h3>Please enter a plate number.</h3>"
     
     if not is_valid_plate(current_plate):
+        print(f"DEBUG: Invalid plate format: {current_plate}")
         return "<h3>Invalid plate number. Please enter a valid plate number.</h3>"
     
+    print("DEBUG: Fetching bus data...")
     data = fetch_bus_data(current_plate)
     if not data:
+        print("DEBUG: No data returned from fetch_bus_data.")
         return "<h3>Error fetching bus data.</h3>"
 
+    print(f"DEBUG: Data fetched successfully: {data}")
+
     lat, lng, loc, spd, voy, dt, dkm, lpt = extract_key_values(data)
+    print(f"DEBUG: Extracted values - Lat: {lat}, Lng: {lng}, Date: {dt}, Loc: {loc}")
     
-    bus_time = datetime.strptime(dt, "%Y-%m-%dT%H:%M:%S") + timedelta(hours=3)
-    current_time = datetime.now(tz=pytz.timezone("Europe/Istanbul"))
+    try:
+        print(f"DEBUG: Parsing date string: '{dt}'")
+        bus_time = datetime.strptime(dt, "%Y-%m-%dT%H:%M:%S") + timedelta(hours=3)
+        current_time = datetime.now(tz=pytz.timezone("Europe/Istanbul"))
+    except Exception as e:
+        print(f"DEBUG: Error parsing date: {e}")
+        return f"<h3>Error parsing bus date: {e}</h3>"
+
     try:
         lat = float(lat)
         lng = float(lng)
-    except (ValueError, TypeError):
+    except (ValueError, TypeError) as e:
+        print(f"DEBUG: Error converting coordinates: {e}")
         return "<h3>Invalid coordinates.</h3>"
 
-    m = folium.Map(location=[lat, lng], zoom_start=13, width="100%", height="90%")
+    try:
+        print("DEBUG: Creating Folium map object...")
+        m = folium.Map(location=[lat, lng], zoom_start=13, width="100%", height="90%")
 
-    if current_mode == "light":
-        folium.TileLayer(
-            TileProvider(
-                url="https://tile.jawg.io/jawg-streets/{z}/{x}/{y}{r}.png?access-token=63BA10a3rgKUqfuP6MQcwnMFU82YntFQ22T8VFlVfkugiNB6q5OwnTFpC6bLMQJX",
-                name="Jawg Streets",
-                attribution="© JAWG, © dgkngk"
-            )
+        print(f"DEBUG: Adding TileLayer ({current_mode})...")
+        if current_mode == "light":
+            folium.TileLayer(
+                TileProvider(
+                    url="https://tile.jawg.io/jawg-streets/{z}/{x}/{y}{r}.png?access-token=63BA10a3rgKUqfuP6MQcwnMFU82YntFQ22T8VFlVfkugiNB6q5OwnTFpC6bLMQJX",
+                    name="Jawg Streets",
+                    attribution="© JAWG, © dgkngk"
+                )
+            ).add_to(m)
+        else:
+            folium.TileLayer(
+                TileProvider(
+                    url="https://tile.jawg.io/jawg-matrix/{z}/{x}/{y}{r}.png?access-token=63BA10a3rgKUqfuP6MQcwnMFU82YntFQ22T8VFlVfkugiNB6q5OwnTFpC6bLMQJX",
+                    name="Jawg Dark",
+                    attribution="© JAWG, © dgkngk"
+                )
+            ).add_to(m)
+
+
+        popup_text = f"""
+        <b>Plate Number:<b/> {lpt}<br>
+        <b>Location:</b> {loc}<br>
+        <b>Route:</b> {voy}<br>
+        <b>Speed:</b> {spd} km/h<br>
+        <b>Bus Time:</b> {bus_time.strftime("%Y-%m-%d %H:%M:%S")}<br>
+        <b>Refresh Time</b> {current_time.strftime("%Y-%m-%d %H:%M:%S")}<br>
+        <b>Daily Km:</b> {dkm}
+        """
+
+        print("DEBUG: Adding marker...")
+        folium.Marker(
+            [lat, lng],
+            popup=folium.Popup(popup_text, max_width=300),
+            tooltip="Bus Location",
+            icon=folium.Icon(color="red", icon="bus", prefix="fa")
         ).add_to(m)
-    else:
-        folium.TileLayer(
-            TileProvider(
-                url="https://tile.jawg.io/jawg-matrix/{z}/{x}/{y}{r}.png?access-token=63BA10a3rgKUqfuP6MQcwnMFU82YntFQ22T8VFlVfkugiNB6q5OwnTFpC6bLMQJX",
-                name="Jawg Dark",
-                attribution="© JAWG, © dgkngk"
-            )
-        ).add_to(m)
 
-
-    popup_text = f"""
-    <b>Plate Number:<b/> {lpt}<br>
-    <b>Location:</b> {loc}<br>
-    <b>Route:</b> {voy}<br>
-    <b>Speed:</b> {spd} km/h<br>
-    <b>Bus Time:</b> {bus_time.strftime("%Y-%m-%d %H:%M:%S")}<br>
-    <b>Refresh Time</b> {current_time.strftime("%Y-%m-%d %H:%M:%S")}<br>
-    <b>Daily Km:</b> {dkm}
-    """
-
-    folium.Marker(
-        [lat, lng],
-        popup=folium.Popup(popup_text, max_width=300),
-        tooltip="Bus Location",
-        icon=folium.Icon(color="red", icon="bus", prefix="fa")
-    ).add_to(m)
-
-    return m.get_root().render()
+        print("DEBUG: Rendering map HTML...")
+        return m.get_root().render()
+    except Exception as e:
+        print(f"DEBUG: Unexpected error during map generation: {e}")
+        return f"<h3>Error generating map: {e}</h3>"
 
 
 @app.route('/')
@@ -179,7 +203,9 @@ def index():
             }
 
             function refreshMap() {
-                document.getElementById('mapFrame').src = '/map?ts=' + new Date().getTime();
+                const plate = document.getElementById("plateInput").value;
+                const mode = getCookie("map_mode") || "light";
+                document.getElementById('mapFrame').src = '/map?plate=' + encodeURIComponent(plate) + '&mode=' + mode + '&ts=' + new Date().getTime();
             }
             function toggleMode() {
                 let mode = getCookie("map_mode") || "light";
@@ -258,8 +284,8 @@ def index():
 
 @app.route('/map')
 def map_view():
-    saved_plate = request.cookies.get("bus_plate")
-    current_mode = request.cookies.get("map_mode", "light")
+    saved_plate = request.args.get("plate") or request.cookies.get("bus_plate")
+    current_mode = request.args.get("mode") or request.cookies.get("map_mode", "light")
     
     html = generate_map_html(saved_plate, current_mode)
     return Response(html, mimetype='text/html')
