@@ -1,22 +1,37 @@
-# Bus Location Tracker
+# Bus Location Tracker (Find Me) 🚌
 
-This is a **Flask**-based live bus location tracker that fetches real-time GPS data from a JSON API and displays it on an interactive Leaflet.js map embedded inside a Tkinter GUI. Users can manually enter a license plate number or select from a dropdown list of active buses retrieved from a separate endpoint. The map features day/night modes, and optional auto-refresh every 30 seconds.
+![Python](https://img.shields.io/badge/Python-3.x-blue?style=for-the-badge&logo=python)
+![Tkinter](https://img.shields.io/badge/Tkinter-GUI-gray?style=for-the-badge)
+![Leaflet](https://img.shields.io/badge/Leaflet-Maps-green?style=for-the-badge&logo=leaflet)
 
-The application provides a clean user interface where bus details like location, speed, date/time, and route are shown visually on the map. It also remembers the last selected bus using **cookies** and includes basic plate number **validation for user input**. All map data is served without writing to disk, using an in-memory bytes buffer and a Flask route.
+**Find Me** is a specialized desktop utility that bridges the gap between desktop GUIs and web technologies. It allows operations staff to track specific bus fleets in real-time by embedding a dynamic **Leaflet.js** map within a native **Python Tkinter** window.
 
-This app only works for Pamukkale Turizm buses. Other bus API's may or may not be implemented in the future.
+This project solves the problem of accessing a web-only map interface within a legacy desktop workflow by spinning up a lightweight, local Flask server to render the map tile logic and bridging it to the desktop frame.
 
-## 🚀 Getting Started
+## 💡 How It Works
 
-### 🔧 Dependencies
-Install required packages:
+1.  **Hybrid Architecture**: The app runs a background daemon thread hosting a **Flask** server.
+2.  **Map Rendering**: A `webview` component within the Tkinter GUI points to `localhost`, rendering the interactive map.
+3.  **Data Ingestion**: The backend polls the fleet management API (Pamukkale Turizm) to fetch GPS coordinates, speed, and route data.
+4.  **State Persistence**: Uses a cookie-based mechanism to remember the last tracked vehicle across sessions.
 
-```bash
-pip install -r requirements.txt
-````
+## 🚀 Features
 
-### 📖 Running the Application
+*   **Real-Time Tracking**: Auto-refreshing GPS coordinates (30s interval).
+*   **Fleet Search**: Dropdown selection and license plate validation.
+*   **Map Controls**: Day/Night mode toggles and interactive zoom.
+*   **No-Disk-Write**: Map data serves from in-memory byte buffers for performance.
 
-```bash
-python find_me.py
+## 🛠️ Usage
 
+1.  **Install Requirements**:
+    ```bash
+    pip install -r requirements.txt
+    ```
+
+2.  **Launch the Dashboard**:
+    ```bash
+    python find_me.py
+    ```
+
+*Note: This application requires access to the specific fleet management API endpoints defined in the configuration.*
