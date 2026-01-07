@@ -1,0 +1,7 @@
+firebase-functions
+requests
+flask
+folium
+pytz
+xyzservices
+flask-cors
