@@ -265,7 +265,7 @@ def map_view():
     return Response(html, mimetype='text/html')
 
 def fetch_buses(from_point, to_point, label_suffix):
-    url = f"https://www.pamukkale.com.tr/ajax.php?islem=yolcum-nerede-sefer&Kalkis={from_point}&Varis={to_point}"
+    url = f"https://d3rh8btizouuof.cloudfront.net/ajax.php?islem=yolcum-nerede-sefer&Kalkis={from_point}&Varis={to_point}"
     headers = {
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
         "Referer": "https://www.pamukkale.com.tr/",
